@@ -4,11 +4,20 @@ import os
 
 app = Flask(__name__)
 
-# ================= GLOBAL STATES =================
+# ================= GLOBAL VARIABLES =================
 streaming_active = False
 latest_frame = None
 sensor_data = {"temperature": 0, "voltage": 0}
-servo_angle = 0   # +60 or -60
+servo_angle = 0  # Only +60 or -60 allowed
+
+
+# ================= ROOT (FIXES 404 ISSUE) =================
+@app.route("/")
+def home():
+    return jsonify({
+        "status": "Server is running",
+        "streaming": streaming_active
+    })
 
 
 # ================= STREAM CONTROL =================
@@ -36,13 +45,13 @@ def upload_frame():
     global latest_frame
     if streaming_active:
         latest_frame = request.data
-    return "ok"
+    return jsonify({"status": "frame_received"})
 
 
 @app.route("/live_frame", methods=["GET"])
 def live_frame():
     if latest_frame is None:
-        return "No frame", 404
+        return jsonify({"error": "No frame available"}), 404
     return send_file(BytesIO(latest_frame), mimetype='image/jpeg')
 
 
@@ -51,7 +60,7 @@ def live_frame():
 def receive_sensor():
     global sensor_data
     sensor_data = request.json
-    return jsonify({"status": "received"})
+    return jsonify({"status": "sensor_received"})
 
 
 @app.route("/get_sensor", methods=["GET"])
@@ -64,13 +73,13 @@ def get_sensor():
 def set_servo():
     global servo_angle
     data = request.json
-    angle = data.get("angle", 0)
+    angle = data.get("angle")
 
-    if angle == 60 or angle == -60:
+    if angle in [60, -60]:
         servo_angle = angle
-        return jsonify({"status": "updated"})
+        return jsonify({"status": "servo_updated", "angle": servo_angle})
     else:
-        return jsonify({"error": "Invalid angle"}), 400
+        return jsonify({"error": "Only +60 or -60 allowed"}), 400
 
 
 @app.route("/get_servo", methods=["GET"])
