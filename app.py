@@ -8,6 +8,8 @@ app = Flask(__name__)
 sensor_data = {"temperature": None, "humidity": None}
 servo_state = {"angle": 0}
 esp_cam_url = None  # Stream URL to be set by ESP32-CAM
+# Global variable to track streaming state
+streaming_active = False
 
 # ========================
 # Root route
@@ -74,6 +76,25 @@ def control_servo():
 @app.route("/get_servo_state", methods=["GET"])
 def get_servo_state():
     return jsonify(servo_state)
+
+# App requests streaming
+@app.route("/start_stream", methods=["POST"])
+def start_stream():
+    global streaming_active
+    streaming_active = True
+    return {"status": "stream_started"}
+
+# App stops streaming
+@app.route("/stop_stream", methods=["POST"])
+def stop_stream():
+    global streaming_active
+    streaming_active = False
+    return {"status": "stream_stopped"}
+
+# ESP32-CAM polls to check if it should send frames
+@app.route("/stream_status", methods=["GET"])
+def stream_status():
+    return {"streaming": streaming_active}
 
 # ========================
 # Run Flask
