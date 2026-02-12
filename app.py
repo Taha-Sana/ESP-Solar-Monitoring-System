@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, Response
 import requests
+import os  # <--- Add this for environment variables
 
 app = Flask(__name__)
 
@@ -52,5 +53,8 @@ def control_servo():
 def get_servo_state():
     return jsonify(servo_state)
 
+# ================= RUN SERVER =================
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    # Use the PORT environment variable if provided (Render sets this automatically)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
