@@ -1,106 +1,84 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
+from io import BytesIO
+import os
 
 app = Flask(__name__)
 
-# ========================
-# Global storage
-# ========================
-sensor_data = {"temperature": None, "humidity": None}
-servo_state = {"angle": 0}
-esp_cam_url = None  # Stream URL to be set by ESP32-CAM
-# Global variable to track streaming state
+# ================= GLOBAL STATES =================
 streaming_active = False
+latest_frame = None
+sensor_data = {"temperature": 0, "voltage": 0}
+servo_angle = 0   # +60 or -60
 
-# ========================
-# Root route
-# ========================
-@app.route("/", methods=["GET"])
-def home():
-    return "ESP Solar Monitoring System Service is Live!"
 
-# ========================
-# ESP32-CAM stream routes
-# ========================
-# ESP32-CAM registers its stream URL
-@app.route("/register_stream", methods=["POST"])
-def register_stream():
-    global esp_cam_url
-    data = request.get_json()
-    esp_cam_url = data.get("stream_url")
-    return jsonify({"status": "registered"})
-
-# Flutter app fetches stream URL
-@app.route("/stream-url", methods=["GET"])
-def stream_url():
-    if not esp_cam_url:
-        return jsonify({"error": "Stream not registered"}), 404
-    return jsonify({"stream_url": esp_cam_url})
-
-# Optional direct /stream route for testing
-@app.route("/stream", methods=["GET"])
-def stream_redirect():
-    if esp_cam_url:
-        return jsonify({"stream_url": esp_cam_url})
-    else:
-        return jsonify({"error": "No stream registered"}), 404
-
-# ========================
-# Sensor endpoints
-# ========================
-# ESP32 sends sensor data
-@app.route("/send_sensor", methods=["POST"])
-def receive_sensor():
-    global sensor_data
-    data = request.get_json()
-    sensor_data.update(data)
-    return jsonify({"status": "ok"})
-
-# Flutter app fetches sensor data
-@app.route("/get_sensor", methods=["GET"])
-def get_sensor():
-    return jsonify(sensor_data)
-
-# ========================
-# Servo endpoints
-# ========================
-# Flutter app controls servo
-@app.route("/servo", methods=["POST"])
-def control_servo():
-    global servo_state
-    data = request.get_json()
-    servo_state["angle"] = data.get("angle", servo_state["angle"])
-    # ESP32 can poll this value
-    return jsonify({"status": "ok"})
-
-# ESP32 polling endpoint
-@app.route("/get_servo_state", methods=["GET"])
-def get_servo_state():
-    return jsonify(servo_state)
-
-# App requests streaming
+# ================= STREAM CONTROL =================
 @app.route("/start_stream", methods=["POST"])
 def start_stream():
     global streaming_active
     streaming_active = True
-    return {"status": "stream_started"}
+    return jsonify({"status": "stream_started"})
 
-# App stops streaming
+
 @app.route("/stop_stream", methods=["POST"])
 def stop_stream():
     global streaming_active
     streaming_active = False
-    return {"status": "stream_stopped"}
+    return jsonify({"status": "stream_stopped"})
 
-# ESP32-CAM polls to check if it should send frames
+
 @app.route("/stream_status", methods=["GET"])
 def stream_status():
-    return {"streaming": streaming_active}
+    return jsonify({"streaming": streaming_active})
 
-# ========================
-# Run Flask
-# ========================
-import os
 
+@app.route("/upload_frame", methods=["POST"])
+def upload_frame():
+    global latest_frame
+    if streaming_active:
+        latest_frame = request.data
+    return "ok"
+
+
+@app.route("/live_frame", methods=["GET"])
+def live_frame():
+    if latest_frame is None:
+        return "No frame", 404
+    return send_file(BytesIO(latest_frame), mimetype='image/jpeg')
+
+
+# ================= SENSOR =================
+@app.route("/send_sensor", methods=["POST"])
+def receive_sensor():
+    global sensor_data
+    sensor_data = request.json
+    return jsonify({"status": "received"})
+
+
+@app.route("/get_sensor", methods=["GET"])
+def get_sensor():
+    return jsonify(sensor_data)
+
+
+# ================= SERVO =================
+@app.route("/set_servo", methods=["POST"])
+def set_servo():
+    global servo_angle
+    data = request.json
+    angle = data.get("angle", 0)
+
+    if angle == 60 or angle == -60:
+        servo_angle = angle
+        return jsonify({"status": "updated"})
+    else:
+        return jsonify({"error": "Invalid angle"}), 400
+
+
+@app.route("/get_servo", methods=["GET"])
+def get_servo():
+    return jsonify({"angle": servo_angle})
+
+
+# ================= RUN =================
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
