@@ -21,18 +21,18 @@ def home():
 
 
 # ================= STREAM CONTROL =================
-@app.route("/start_stream", methods=["POST"])
+@app.route('/start_stream', methods=['GET', 'POST'])
 def start_stream():
-    global streaming_active
-    streaming_active = True
-    return jsonify({"status": "stream_started"})
+    global streaming
+    streaming = True
+    return "Streaming started"
 
 
-@app.route("/stop_stream", methods=["POST"])
+@app.route('/stop_stream', methods=['GET', 'POST'])
 def stop_stream():
-    global streaming_active
-    streaming_active = False
-    return jsonify({"status": "stream_stopped"})
+    global streaming
+    streaming = False
+    return "Streaming stopped"
 
 
 @app.route("/stream_status", methods=["GET"])
