@@ -23,14 +23,14 @@ def home():
 # ================= STREAM CONTROL =================
 @app.route('/start_stream', methods=['GET', 'POST'])
 def start_stream():
-    global streaming
+    global streaming_active
     streaming_active = True
     return "Streaming started"
 
 
 @app.route('/stop_stream', methods=['GET', 'POST'])
 def stop_stream():
-    global streaming
+    global streaming_active
     streaming_active = False
     return "Streaming stopped"
 
