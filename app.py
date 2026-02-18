@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, send_file
 from io import BytesIO
+from flask import render_template_string
 import os
 
 app = Flask(__name__)
@@ -85,6 +86,28 @@ def set_servo():
 @app.route("/get_servo", methods=["GET"])
 def get_servo():
     return jsonify({"angle": servo_angle})
+
+@app.route("/live")
+def live_view():
+    return render_template_string("""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Live Stream</title>
+    </head>
+    <body>
+        <h2>ESP32 Live Stream</h2>
+        <img id="video" width="500">
+
+        <script>
+            setInterval(function() {
+                document.getElementById("video").src =
+                    "/live_frame?t=" + new Date().getTime();
+            }, 200); // refresh every 200ms
+        </script>
+    </body>
+    </html>
+    """)
 
 
 # ================= RUN =================
