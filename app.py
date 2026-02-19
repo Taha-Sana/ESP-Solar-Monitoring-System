@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify, send_file
 from io import BytesIO
 from flask import render_template_string
+from flask import Response
+import time
 import os
 
 app = Flask(__name__)
@@ -87,28 +89,32 @@ def set_servo():
 def get_servo():
     return jsonify({"angle": servo_angle})
 
+@app.route("/video_feed")
+def video_feed():
+    def generate():
+        global latest_frame
+        while True:
+            if latest_frame is not None:
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + latest_frame + b'\r\n')
+            time.sleep(0.05)  # 20 FPS approx
+
+    return Response(generate(),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+    
 @app.route("/live")
 def live_view():
-    return render_template_string("""
-    <!DOCTYPE html>
+    return """
     <html>
-    <head>
-        <title>Live Stream</title>
-    </head>
-    <body>
-        <h2>ESP32 Live Stream</h2>
-        <img id="video" width="500">
-
-        <script>
-            setInterval(function() {
-                document.getElementById("video").src =
-                    "/live_frame?t=" + new Date().getTime();
-            }, 200); // refresh every 200ms
-        </script>
-    </body>
+        <head>
+            <title>ESP32 Live Stream</title>
+        </head>
+        <body>
+            <h2>ESP32 Live Stream (Cloud)</h2>
+            <img src="/video_feed" width="600">
+        </body>
     </html>
-    """)
-
+    """
 
 # ================= RUN =================
 if __name__ == "__main__":
