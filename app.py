@@ -8,7 +8,7 @@ import os
 app = Flask(__name__)
 
 # ================= GLOBAL VARIABLES =================
-streaming_active = False
+streaming_active = True
 latest_frame = None
 sensor_data = {"temperature": 0, "voltage": 0}
 servo_angle = 0  # Only +60 or -60 allowed
